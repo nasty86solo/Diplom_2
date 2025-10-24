@@ -1,5 +1,4 @@
 import allure
-import pytest
 from src.data import Status
 from src.orders import OrdersApi
 
@@ -13,7 +12,7 @@ class TestOrders:
         assert ingredients, "Ожидали, что API вернёт список ингредиентов"
         payload = {"ingredients": ingredients[:3]}
         r = orders.create(payload, authorized=True)
-        assert r.status_code in (Status.OK, Status.CREATED)
+        assert r.status_code == Status.OK
         body = r.json()
         assert body.get("success") is True
 
@@ -22,23 +21,20 @@ class TestOrders:
         ingredients = orders.list_ingredients()
         payload = {"ingredients": ingredients[:2]}
         r = orders.create(payload, authorized=False)
-        if r.status_code in (Status.UNAUTHORIZED, Status.FORBIDDEN):
-            return
-        assert r.status_code == Status.OK
+        assert r.status_code == Status.UNAUTHORIZED
         body = r.json()
-        if body.get("success") is True:
-            pytest.xfail("API allows order creation without authorization token")
-        assert body.get("success") is False or "message" in body
+        assert body.get("success") is False
+        assert "message" in body
 
     @allure.title("Создание заказа без ингредиентов")
     def test_create_order_no_ingredients(self, orders: OrdersApi, users, auth_token):
         users.client.set_token(auth_token)
         r = orders.create({"ingredients": []}, authorized=True)
-        assert r.status_code in (Status.BAD_REQUEST, Status.FORBIDDEN)
+        assert r.status_code == Status.BAD_REQUEST
 
     @allure.title("Создание заказа с невалидным ингредиентом")
     def test_create_order_invalid_ingredient(self, orders: OrdersApi, users, auth_token):
         users.client.set_token(auth_token)
         payload = {"ingredients": ["deadbeefdeadbeefdeadbeef"]}
         r = orders.create(payload, authorized=True)
-        assert r.status_code in (Status.BAD_REQUEST, Status.SERVER_ERROR)
+        assert r.status_code == Status.SERVER_ERROR
